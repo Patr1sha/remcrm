@@ -8,6 +8,34 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+// === ЗАЩИТА ПАРОЛЕМ ===
+const AUTH_USER = process.env.CRM_USER || 'Admin191923';
+const AUTH_PASS = process.env.CRM_PASS || '3t7bn36thda';
+
+app.use((req, res, next) => {
+  // Защищаем API и главную страницу (статические файлы подтянутся автоматически после авторизации)
+  if (req.path.startsWith('/api/') || req.path === '/' || req.path === '') {
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Basic ')) {
+      res.setHeader('WWW-Authenticate', 'Basic realm="RemCRM Access"');
+      return res.status(401).send('Доступ запрещен. Введите логин и пароль.');
+    }
+
+    const base64Credentials = authHeader.split(' ')[1];
+    const credentials = Buffer.from(base64Credentials, 'base64').toString('utf-8');
+    const [username, password] = credentials.split(':');
+
+    if (username === AUTH_USER && password === AUTH_PASS) {
+      return next(); // Пароль верный, пропускаем
+    } else {
+      res.setHeader('WWW-Authenticate', 'Basic realm="RemCRM Access"');
+      return res.status(401).send('Неверный логин или пароль');
+    }
+  }
+  next();
+});
+// === КОНЕЦ ЗАЩИТЫ ===
 app.use(express.static(path.join(__dirname, 'public')));
 
 // API: Orders
